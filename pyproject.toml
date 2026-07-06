@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gjq-runtime-mcp-server"
+version = "0.1.0"
+description = "Model Context Protocol (MCP) server for the GuoJi / CETC-ICQ Quantum Cloud Platform, built on gjq-client."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+
+authors = [
+    { name = "GJQ Cloud Team" },
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+]
+
+dependencies = [
+    "fastmcp>=2.0.0,<4",
+    # gjq-client: this server relies on a few SDK internals (see runtime.py),
+    # so it is pinned with a tight upper bound; re-verify on every bump.
+    "gjq-client>=0.1.2,<0.2",
+    "qiskit>=2.0.0,<3",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[project.urls]
+Homepage = "https://www.tiangongqs.com"
+Repository = "https://github.com/guoji-quantum/gjq_client"
+
+[project.scripts]
+gjq-runtime-mcp-server = "gjq_runtime_mcp_server.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
