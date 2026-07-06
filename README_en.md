@@ -4,7 +4,9 @@ A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that le
 AI assistants interact with the **GuoJi / CETC-ICQ Quantum Cloud Platform** through
 the [`gjq-client`](https://pypi.org/project/gjq-client/) Qiskit 2.0 SDK.
 
-[中文文档](README_zh.md)
+[中文文档](README.md)
+
+<img src="docs/brief.png" alt="brief" width="800">
 
 ## Features
 
@@ -20,76 +22,35 @@ the [`gjq-client`](https://pypi.org/project/gjq-client/) Qiskit 2.0 SDK.
 <img src="docs/sample2.png" alt="sample2" width="320">
 <img src="docs/sample3.png" alt="sample3" width="320">
 
-## Installation
+## Install and start (Cursor example)
+
+1. Clone the repo and create a virtual environment
 
 ```bash
 git clone <this-repo>
 cd gjq-runtime-mcp-server
-
 python -m venv .venv
-# Windows:  .venv\Scripts\activate
-# Linux/macOS:  source .venv/bin/activate
+
+# Windows
+.\.venv\Scripts\activate
+# Linux/macOS
+source .venv/bin/activate
 
 pip install -e .
 ```
 
-## Quick start
+2. Rename `.env.example` to `.env`, then set `GJQ_API_KEY=your_api_key_here`. (Get your API key from <https://www.tiangongqs.com/cloud>)
+
+3. Start the MCP server locally (quick runtime check)
 
 ```bash
-cp .env.example .env
-# Edit .env and set GJQ_API_KEY=your_api_key_here
-
 python -m gjq_runtime_mcp_server
 ```
 
-Get your API key from <https://www.tiangongqs.com/cloud>.
-
-## MCP tools
-
-### Account
-| Tool | Description |
-|------|-------------|
-| `setup_gjq_account_tool` | Configure and cache cloud account credentials |
-| `active_account_info_tool` | Show the active account (api_key masked) |
-
-### Device
-| Tool | Description |
-|------|-------------|
-| `list_backends_tool` | List all available backends |
-| `get_backend_configuration_tool` | Static config of a backend |
-| `get_backend_properties_tool` | Calibration data (T1/T2, gate errors) |
-| `least_busy_tool` | Name of the least busy backend |
-
-### Compute
-| Tool | Description |
-|------|-------------|
-| `sample_tool` | Submit a sampling task (OpenQASM circuit) |
-| `estimate_tool` | Submit an expectation-estimation task |
-
-### Task management
-| Tool | Description |
-|------|-------------|
-| `get_task_status_tool` | Task status (INITIALIZING/QUEUED/RUNNING/DONE/ERROR) |
-| `get_task_result_tool` | Result (counts, or expectation values with an observable) |
-| `get_task_log_tool` | Execution log |
-| `get_task_detail_tool` | Backend / shots / submit time |
-| `list_my_tasks_tool` | List the user's tasks |
-
-## MCP resources
-
-| URI | Description |
-|-----|-------------|
-| `gjq://status` | Service status and active limits |
-| `circuits://bell-state` | Bell state example (OpenQASM) |
-| `circuits://ghz-state` | GHZ state example |
-| `circuits://superposition` | Superposition example |
-| `circuits://random` | Random-bit circuit example |
-
-## Configure in MCP clients (Cursor)
-
-Create `.cursor/mcp.json` in the project root (Windows template):
+4. Create `.cursor/mcp.json` in the project root
 
 ```json
+# Windows (remove this line)
 {
   "mcpServers": {
     "gjq-runtime": {
@@ -100,12 +61,43 @@ Create `.cursor/mcp.json` in the project root (Windows template):
     }
   }
 }
+
+# Linux/macOS (remove this line)
+{
+  "mcpServers": {
+    "gjq-runtime": {
+      "command": ".venv/bin/python",
+      "args": ["-m", "gjq_runtime_mcp_server"],
+      "cwd": "/path/to/gjq-runtime-mcp-server",
+      "env": { "GJQ_API_KEY": "your_api_key_here" }
+    }
+  }
+}
 ```
 
-Verify in Cursor:
-1. Restart Cursor.
-2. Go to `Cursor Settings → Tools & MCPs → Installed MCP Servers`.
-3. Confirm `gjq-runtime` is listed, turn on the switch, and check that a green dot is shown.
+5. Verify in Cursor
+
+- Restart Cursor.
+- Go to `Cursor Settings → Tools & MCPs → Installed MCP Servers`.
+- Confirm `gjq-runtime` is listed, turn on the switch, and check that a green dot is shown.
+
+## MCP tools
+
+- Account: `setup_gjq_account_tool`, `active_account_info_tool`
+- Device: `list_backends_tool`, `get_backend_configuration_tool`, `get_backend_properties_tool`, `least_busy_tool`
+- Compute: `sample_tool`, `estimate_tool`
+- Task: `get_task_status_tool`, `get_task_result_tool`, `get_task_log_tool`, `get_task_detail_tool`, `list_my_tasks_tool`
+
+All tools return `{"status": "success" | "error", ...}`.
+
+> OpenQASM 2.0 works out of the box. To submit OpenQASM 3 circuits, install:
+> `pip install qiskit_qasm3_import`.
+
+## MCP resources
+
+`gjq://status`, `circuits://bell-state`, `circuits://ghz-state`, `circuits://superposition`, `circuits://random`
+
+## Other MCP client configuration
 
 The JSON above also applies to JSON-based clients such as Cursor and Claude Desktop.
 
@@ -113,7 +105,7 @@ The JSON above also applies to JSON-based clients such as Cursor and Claude Desk
 |--------|-------------|
 | Cursor | `.cursor/mcp.json` (project root) |
 | Claude Desktop | macOS: `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| Codex CLI | `~/.codex/config.toml` (TOML, see below) |
+| Codex | `~/.codex/config.toml` (TOML, see below) |
 
 Codex CLI uses TOML instead of JSON. Add the following to `~/.codex/config.toml`
 (the top-level table must be `mcp_servers`):
@@ -132,30 +124,7 @@ GJQ_API_KEY = "your_api_key_here"
 
 A companion skill lives in [`skills/gjq-quantum-runtime/`](skills/gjq-quantum-runtime/SKILL.md).
 To use it in Cursor, copy that folder into `.cursor/skills/` (project) or
-`~/.cursor/skills/` (personal):
-
-```bash
-cp -r skills/gjq-quantum-runtime ~/.cursor/skills/
-```
-
-## Example circuit (sampling)
-
-```python
-# sample_tool input
-qasm = """OPENQASM 2.0;
-include "qelib1.inc";
-qreg q[2];
-creg c[2];
-h q[0];
-cx q[0],q[1];
-measure q[0] -> c[0];
-measure q[1] -> c[1];"""
-# -> {"status": "success", "task_id": "..."}
-# then poll get_task_status_tool, then get_task_result_tool
-```
-
-> OpenQASM 2.0 works out of the box. To submit OpenQASM 3 circuits, install the
-> optional parser: `pip install qiskit_qasm3_import`.
+`~/.cursor/skills/` (personal).
 
 ## Security notes
 

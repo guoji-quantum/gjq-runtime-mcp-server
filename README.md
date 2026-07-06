@@ -4,6 +4,8 @@
 让 AI 助手通过 [`gjq-client`](https://pypi.org/project/gjq-client/) Qiskit 2.0 SDK
 与**国基 / CETC-ICQ 量子云平台**交互。
 
+<img src="docs/brief.png" alt="brief" width="800">
+
 ## 功能
 
 - **账号管理**：配置并查看云平台凭据
@@ -19,29 +21,64 @@
 <img src="docs/sample3.png" alt="sample3" width="320">
 
 
-## 安装
+## 安装与启动（以Cursor为例）
+
+1. 克隆仓库并创建虚拟环境
 
 ```bash
 git clone <this-repo>
 cd gjq-runtime-mcp-server
-
 python -m venv .venv
-# Windows:  .venv\Scripts\activate
-# Linux/macOS:  source .venv/bin/activate
+
+# Windows
+.\.venv\Scripts\activate
+# Linux/macOS
+source .venv/bin/activate
 
 pip install -e .
 ```
 
-## 快速开始
+2. `.env.example`重命名为`.env`，进入设置 `GJQ_API_KEY=你的_api_key`。（API key 从 <https://www.tiangongqs.com/cloud> 获取）
+
+3. 本地启动 MCP Server（先验证可运行）
 
 ```bash
-cp .env.example .env
-# 编辑 .env，设置 GJQ_API_KEY=你的_api_key
-
 python -m gjq_runtime_mcp_server
 ```
 
-API key 从 <https://www.tiangongqs.com/cloud> 获取。
+4. 在项目根目录创建 `.cursor/mcp.json`
+
+```json
+# Windows(该行去除)
+{
+  "mcpServers": {
+    "gjq-runtime": {
+      "command": ".venv\\Scripts\\python.exe",
+      "args": ["-m", "gjq_runtime_mcp_server"],
+      "cwd": "/path/to/gjq-runtime-mcp-server",
+      "env": { "GJQ_API_KEY": "你的_api_key" }
+    }
+  }
+}
+
+# Linux/macOS(该行去除)
+{
+  "mcpServers": {
+    "gjq-runtime": {
+      "command": ".venv/bin/python",
+      "args": ["-m", "gjq_runtime_mcp_server"],
+      "cwd": "/path/to/gjq-runtime-mcp-server",
+      "env": { "GJQ_API_KEY": "你的_api_key" }
+    }
+  }
+}
+```
+
+5. 在 Cursor 中验证
+
+- 重启 Cursor。
+- 打开 `Cursor Settings → Tools & MCPs → Installed MCP Servers`。
+- 确认有 `gjq-runtime`，打开开关，并检查显示小绿点。
 
 ## MCP 工具
 
@@ -59,27 +96,7 @@ API key 从 <https://www.tiangongqs.com/cloud> 获取。
 
 `gjq://status`、`circuits://bell-state`、`circuits://ghz-state`、`circuits://superposition`、`circuits://random`
 
-## 在 MCP 客户端中配置 (Cursor)
-
-在项目根目录创建 `.cursor/mcp.json`（Windows 模板）：
-
-```json
-{
-  "mcpServers": {
-    "gjq-runtime": {
-      "command": ".venv\\Scripts\\python.exe",
-      "args": ["-m", "gjq_runtime_mcp_server"],
-      "cwd": "/path/to/gjq-runtime-mcp-server",
-      "env": { "GJQ_API_KEY": "你的_api_key" }
-    }
-  }
-}
-```
-
-在 Cursor 中验证：
-1. 重启 Cursor。
-2. 打开 `Cursor Settings → Tools & MCPs → Installed MCP Servers`。
-3. 确认有 `gjq-runtime`，打开开关，并检查显示小绿点。
+## 其他 MCP 客户端配置
 
 上面的 JSON 适用于 Cursor、Claude Desktop 等基于 JSON 配置的客户端。
 
