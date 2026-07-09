@@ -6,6 +6,7 @@ environment is opt-in via GJQ_RUN_INTEGRATION=1.
 """
 
 import os
+from pathlib import Path
 
 import pytest
 from fastmcp import Client
@@ -76,6 +77,44 @@ def test_active_account_info_masks_key(tmp_path, monkeypatch):
     assert info["configured"] is True
     assert info["api_key"] != "abcd1234ef"
     assert "***" in info["api_key"]
+
+
+def test_active_account_info_reports_env_key(tmp_path, monkeypatch):
+    monkeypatch.setenv("GJQ_API_KEY", "env123456789")
+    monkeypatch.setenv("GJQ_CHANNEL", "gjq_cloud")
+    monkeypatch.setattr(runtime, "ACCOUNT_CONFIG_FILE", tmp_path / "missing.json")
+
+    info = runtime.active_account_info()
+
+    assert info["configured"] is True
+    assert info["source"] == "env"
+    assert info["api_key"] == "env1***89"
+
+
+def test_get_service_env_key_uses_ephemeral_sdk_config(tmp_path, monkeypatch):
+    import gjq_client.gjq_runtime.gjq_runtime_service as sdk_runtime_service
+
+    monkeypatch.setenv("GJQ_API_KEY", "env123456789")
+    monkeypatch.setattr(runtime, "_service", None)
+    monkeypatch.setattr(
+        sdk_runtime_service,
+        "_DEFAULT_ACCOUNT_CONFIG_JSON_FILE",
+        str(tmp_path / "default.json"),
+    )
+    seen = {}
+
+    class DummyService:
+        def __init__(self, **kwargs):
+            seen["api_key"] = kwargs["api_key"]
+            seen["config_path"] = sdk_runtime_service._DEFAULT_ACCOUNT_CONFIG_JSON_FILE
+
+    monkeypatch.setattr(runtime, "GJQRuntimeService", DummyService)
+
+    runtime.get_service()
+
+    assert seen["api_key"] == "env123456789"
+    assert Path(seen["config_path"]) != tmp_path / "default.json"
+    assert Path(seen["config_path"]).name == "gjq_client_account.json"
 
 
 # --------------------------------------------------------------------------

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 import threading
 from pathlib import Path
 from typing import Any
@@ -32,6 +33,7 @@ ACCOUNT_CONFIG_FILE = Path.home() / ".gjq_client" / "gjq_client_account.json"
 
 _service: GJQRuntimeService | None = None
 _service_lock = threading.Lock()
+_sdk_account_temp_dir = None
 
 # Per-process submission counter (resets when the server restarts).
 _submission_count = 0
@@ -58,6 +60,18 @@ def max_shots() -> int:
 
 def max_submissions() -> int:
     return _env_int("GJQ_MAX_SUBMISSIONS_PER_SESSION", 20)
+
+
+def _use_ephemeral_sdk_account_config() -> None:
+    """Keep env-provided credentials from requiring/writing the user's HOME."""
+    global _sdk_account_temp_dir
+    if _sdk_account_temp_dir is None:
+        _sdk_account_temp_dir = tempfile.TemporaryDirectory(prefix="gjq-runtime-")
+    config_file = Path(_sdk_account_temp_dir.name) / "gjq_client_account.json"
+
+    import gjq_client.gjq_runtime.gjq_runtime_service as sdk_runtime_service
+
+    sdk_runtime_service._DEFAULT_ACCOUNT_CONFIG_JSON_FILE = str(config_file)
 
 
 def configure_account(
@@ -104,6 +118,7 @@ def get_service() -> GJQRuntimeService:
         backend_url = os.environ.get("GJQ_BACKEND_URL") or None
 
         if api_key:
+            _use_ephemeral_sdk_account_config()
             _service = GJQRuntimeService(
                 channel=channel,
                 api_key=api_key,
@@ -122,17 +137,32 @@ def get_service() -> GJQRuntimeService:
         return _service
 
 
+def _mask_api_key(api_key: str) -> str:
+    return (api_key[:4] + "***" + api_key[-2:]) if len(api_key) > 6 else "***"
+
+
 def active_account_info() -> dict[str, Any]:
-    """Return the cached account info with the api_key masked."""
+    """Return the active account info with the api_key masked."""
+    api_key = os.environ.get("GJQ_API_KEY")
+    if api_key:
+        return {
+            "configured": True,
+            "source": "env",
+            "channel": os.environ.get("GJQ_CHANNEL") or "gjq_cloud",
+            "api_key": _mask_api_key(api_key),
+            "base_url": os.environ.get("GJQ_BASE_URL") or None,
+            "backend_url": os.environ.get("GJQ_BACKEND_URL") or None,
+        }
+
     if not ACCOUNT_CONFIG_FILE.exists():
         return {"configured": False}
     data = json.loads(ACCOUNT_CONFIG_FILE.read_text(encoding="utf-8"))
     api_key = data.get("api_key") or ""
-    masked = (api_key[:4] + "***" + api_key[-2:]) if len(api_key) > 6 else "***"
     return {
         "configured": True,
+        "source": "file",
         "channel": data.get("channel"),
-        "api_key": masked,
+        "api_key": _mask_api_key(api_key),
         "base_url": data.get("base_url"),
         "backend_url": data.get("backend_url"),
     }
