@@ -1,8 +1,8 @@
 # GJQ Runtime MCP Server（中文）
 
 一个 [Model Context Protocol](https://modelcontextprotocol.io)（MCP）服务器，
-让 AI 助手通过 [`gjq-client`](https://pypi.org/project/gjq-client/) Qiskit 2.0 SDK
-与**国基 / CETC-ICQ 量子云平台**交互。
+让AI助手通过国基量子云SDK[`gjq-client`](https://pypi.org/project/gjq-client/)
+与[**国基量子计算云平台**](https://tiangongqs.com/)交互。
 
 <img src="docs/brief.png" alt="brief" width="800">
 
