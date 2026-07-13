@@ -1,8 +1,6 @@
-# GJQ Runtime MCP Server
+# GJQ-Runtime-MCP-Server
 
-A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that lets
-AI assistants interact with the **GuoJi / CETC-ICQ Quantum Cloud Platform** through
-the [`gjq-client`](https://pypi.org/project/gjq-client/) Qiskit 2.0 SDK.
+A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that lets AI assistants interact with the [GuoJi Quantum Cloud Platform](https://tiangongqs.com/) through the [`gjq-client`](https://pypi.org/project/gjq-client/) Python SDK.
 
 [中文文档](README.md)
 
