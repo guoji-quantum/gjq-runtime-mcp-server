@@ -65,6 +65,28 @@ def test_shots_guard():
     runtime._check_shots(1)  # ok
 
 
+def test_invalid_guard_limits_use_defaults(monkeypatch):
+    monkeypatch.setenv("GJQ_MAX_SHOTS", "-1")
+    monkeypatch.setenv("GJQ_MAX_SUBMISSIONS_PER_SESSION", "0")
+    assert runtime.max_shots() == 100000
+    assert runtime.max_submissions() == 20
+
+
+def test_submission_options_guard():
+    with pytest.raises(runtime.GuardError, match="optimization_level"):
+        runtime._check_submission_options("FAS-CPU", 4, None)
+    with pytest.raises(runtime.GuardError, match="amplitude_index"):
+        runtime._check_submission_options("SAS-CPU", 1, None)
+    runtime._check_submission_options("SAS-CPU", 1, [0])
+
+
+@pytest.mark.parametrize("raw", [None, "", [], [None]])
+def test_extract_job_id_rejects_invalid_values(raw):
+    job = type("Job", (), {"_job_id": raw})()
+    with pytest.raises(runtime.GuardError):
+        runtime._extract_job_id(job)
+
+
 def test_active_account_info_masks_key(tmp_path, monkeypatch):
     cfg = tmp_path / "gjq_client_account.json"
     cfg.write_text(
@@ -77,6 +99,18 @@ def test_active_account_info_masks_key(tmp_path, monkeypatch):
     assert info["configured"] is True
     assert info["api_key"] != "abcd1234ef"
     assert "***" in info["api_key"]
+
+
+def test_active_account_info_handles_malformed_config(tmp_path, monkeypatch):
+    cfg = tmp_path / "gjq_client_account.json"
+    cfg.write_text("{not-json", encoding="utf-8")
+    monkeypatch.delenv("GJQ_API_KEY", raising=False)
+    monkeypatch.setattr(runtime, "ACCOUNT_CONFIG_FILE", cfg)
+
+    info = runtime.active_account_info()
+
+    assert info["configured"] is False
+    assert "error" in info
 
 
 def test_active_account_info_reports_env_key(tmp_path, monkeypatch):
@@ -190,6 +224,28 @@ def test_submit_sample_rolls_back_submission_slot_on_submit_error(monkeypatch):
     assert runtime.submission_count() == 0
 
 
+def test_submit_sample_rolls_back_when_job_id_is_invalid(monkeypatch):
+    class DummyService:
+        def backend(self, backend_name):
+            return object()
+
+    class InvalidJobSampler:
+        def __init__(self, backend):
+            pass
+
+        def run(self, *args, **kwargs):
+            return type("Job", (), {"_job_id": None})()
+
+    monkeypatch.setattr(runtime, "_submission_count", 0)
+    monkeypatch.setattr(runtime, "get_service", lambda: DummyService())
+    monkeypatch.setattr(runtime, "_prepare_circuit", lambda *args, **kwargs: object())
+    monkeypatch.setattr(runtime, "Sampler", InvalidJobSampler)
+
+    with pytest.raises(runtime.GuardError, match="valid task id"):
+        runtime.submit_sample("dummy", "OPENQASM 2.0;")
+    assert runtime.submission_count() == 0
+
+
 def test_submit_estimate_rolls_back_submission_slot_on_submit_error(monkeypatch):
     class DummyService:
         def backend(self, backend_name):
@@ -211,6 +267,31 @@ def test_submit_estimate_rolls_back_submission_slot_on_submit_error(monkeypatch)
     monkeypatch.setattr(runtime, "Estimator", BrokenEstimator)
 
     with pytest.raises(RuntimeError, match="submit failed"):
+        runtime.submit_estimate("dummy", "OPENQASM 2.0;", [["Z", 1.0]])
+    assert runtime.submission_count() == 0
+
+
+def test_submit_estimate_rolls_back_when_job_id_is_invalid(monkeypatch):
+    class DummyService:
+        def backend(self, backend_name):
+            return object()
+
+    class InvalidJobEstimator:
+        def __init__(self, backend):
+            pass
+
+        def run(self, *args, **kwargs):
+            return type("Job", (), {"_job_id": None})()
+
+    monkeypatch.setattr(runtime, "_submission_count", 0)
+    monkeypatch.setattr(runtime, "get_service", lambda: DummyService())
+    monkeypatch.setattr(runtime, "_prepare_circuit", lambda *args, **kwargs: object())
+    monkeypatch.setattr(
+        runtime, "observable_to_sparse_pauli", lambda observable: object()
+    )
+    monkeypatch.setattr(runtime, "Estimator", InvalidJobEstimator)
+
+    with pytest.raises(runtime.GuardError, match="valid task id"):
         runtime.submit_estimate("dummy", "OPENQASM 2.0;", [["Z", 1.0]])
     assert runtime.submission_count() == 0
 

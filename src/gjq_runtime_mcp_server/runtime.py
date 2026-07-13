@@ -49,9 +49,10 @@ def _env_int(name: str, default: int) -> int:
     if not raw:
         return default
     try:
-        return int(raw)
+        value = int(raw)
     except ValueError:
         return default
+    return value if value > 0 else default
 
 
 def max_shots() -> int:
@@ -156,7 +157,13 @@ def active_account_info() -> dict[str, Any]:
 
     if not ACCOUNT_CONFIG_FILE.exists():
         return {"configured": False}
-    data = json.loads(ACCOUNT_CONFIG_FILE.read_text(encoding="utf-8"))
+    try:
+        data = json.loads(ACCOUNT_CONFIG_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {
+            "configured": False,
+            "error": f"Failed to read GJQ account config: {exc}",
+        }
     api_key = data.get("api_key") or ""
     return {
         "configured": True,
@@ -203,6 +210,17 @@ def _check_shots(shots: int) -> None:
         raise GuardError(f"shots={shots} exceeds GJQ_MAX_SHOTS={limit}")
 
 
+def _check_submission_options(
+    backend_name: str,
+    optimization_level: int,
+    amplitude_index: list[int] | None,
+) -> None:
+    if optimization_level not in range(4):
+        raise GuardError("optimization_level must be between 0 and 3")
+    if backend_name.upper() == "SAS-CPU" and amplitude_index is None:
+        raise GuardError("SAS-CPU requires amplitude_index")
+
+
 def _reserve_submission_slot() -> None:
     global _submission_count
     limit = max_submissions()
@@ -244,7 +262,9 @@ def _extract_job_id(job: Any) -> str:
                 f"Expected a single task id, got {len(raw)}; batch submission "
                 "is not supported by these helpers."
             )
-        return str(raw[0])
+        raw = raw[0]
+    if raw is None or not str(raw).strip():
+        raise GuardError("The submitted job did not return a valid task id.")
     return str(raw)
 
 
@@ -273,6 +293,7 @@ def submit_sample(
 ) -> str:
     """Submit a sampling task; returns the task_id (instanceId)."""
     _check_shots(shots)
+    _check_submission_options(backend_name, optimization_level, amplitude_index)
     service = get_service()
     backend = service.backend(backend_name)
     if backend is None:
@@ -282,10 +303,10 @@ def submit_sample(
     sampler = Sampler(backend=backend)
     try:
         job = sampler.run(circuit, shots=shots, amplitude_index=amplitude_index)
+        return _extract_job_id(job)
     except Exception:
         _release_submission_slot()
         raise
-    return _extract_job_id(job)
 
 
 def submit_estimate(
@@ -299,6 +320,7 @@ def submit_estimate(
 ) -> str:
     """Submit an estimation task; returns the task_id (instanceId)."""
     _check_shots(shots)
+    _check_submission_options(backend_name, optimization_level, amplitude_index)
     obs = observable_to_sparse_pauli(observable)
     service = get_service()
     backend = service.backend(backend_name)
@@ -309,10 +331,10 @@ def submit_estimate(
     estimator = Estimator(backend=backend)
     try:
         job = estimator.run(circuit, shots=shots, obs=obs, amplitude_index=amplitude_index)
+        return _extract_job_id(job)
     except Exception:
         _release_submission_slot()
         raise
-    return _extract_job_id(job)
 
 
 def task_status(task_id: str) -> str | None:
