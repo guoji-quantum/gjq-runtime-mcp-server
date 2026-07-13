@@ -1,18 +1,16 @@
 # GJQ Runtime MCP Server（中文）
 
-一个 [Model Context Protocol](https://modelcontextprotocol.io)（MCP）服务器，
-让AI助手通过国基量子云SDK[`gjq-client`](https://pypi.org/project/gjq-client/)
-与[**国基量子计算云平台**](https://tiangongqs.com/)交互。
+一个[Model Context Protocol](https://modelcontextprotocol.io)（MCP）服务器，让AI助手通过[国基量子云SDK`gjq-client`](https://pypi.org/project/gjq-client/)与[**国基量子计算云平台**](https://tiangongqs.com/)交互。
 
 <img src="docs/brief.png" alt="brief" width="800">
 
 ## 功能
 
 - **账号管理**：配置并查看云平台凭据
-- **设备管理**：列出后端、查询配置 / 校准信息、获取最空闲后端
-- **计算任务**：从 OpenQASM 提交采样（sampling）与期望估计（estimation）任务
-- **任务管理**：轮询状态、获取结果 / 日志 / 详情、列出任务
-- **示例电路**：Bell / GHZ / 叠加 / 随机，以 MCP 资源形式提供
+- **设备管理**：列出后端、查询配置/校准信息、获取最空闲后端
+- **计算任务**：从OpenQASM提交采样（sampling）与期望估计（estimation）任务
+- **任务管理**：轮询状态、获取结果/日志/详情、列出任务
+- **示例电路**：Bell/GHZ/叠加/随机，以MCP资源形式提供
 
 ### 功能展示
 
